@@ -1,300 +1,247 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(const SilaApp());
+void main() => runApp(const StockApp());
 
-class Student {
-  final int id;
-  String name, grade, section, parent, phone;
-  Student(this.id, this.name, this.grade, this.section, this.parent, this.phone);
+const blue = Color(0xFF2357C6);
+const bg = Color(0xFFF4F7FB);
+
+class Product {
+  String id, name, category, barcode, expiry;
+  double cost, price;
+  int quantity, minimum;
+  Product({required this.id, required this.name, required this.category,
+    required this.barcode, required this.expiry, required this.cost,
+    required this.price, required this.quantity, required this.minimum});
+  Map<String, dynamic> toJson() => {'id':id,'name':name,'category':category,
+    'barcode':barcode,'expiry':expiry,'cost':cost,'price':price,
+    'quantity':quantity,'minimum':minimum};
+  factory Product.fromJson(Map<String,dynamic> m) => Product(
+    id:'${m['id']}', name:'${m['name']}', category:'${m['category']}',
+    barcode:'${m['barcode']}', expiry:'${m['expiry']}',
+    cost:(m['cost'] as num).toDouble(), price:(m['price'] as num).toDouble(),
+    quantity:(m['quantity'] as num).toInt(), minimum:(m['minimum'] as num).toInt());
 }
 
-class Homework {
-  String title, description, grade, due;
-  Homework(this.title, this.description, this.grade, this.due);
+class Movement {
+  String id, productId, productName, type, date, note;
+  int quantity;
+  double unitPrice, unitCost;
+  Movement({required this.id, required this.productId, required this.productName,
+    required this.type, required this.date, required this.note,
+    required this.quantity, required this.unitPrice, required this.unitCost});
+  Map<String,dynamic> toJson() => {'id':id,'productId':productId,
+    'productName':productName,'type':type,'date':date,'note':note,
+    'quantity':quantity,'unitPrice':unitPrice,'unitCost':unitCost};
+  factory Movement.fromJson(Map<String,dynamic> m) => Movement(
+    id:'${m['id']}',productId:'${m['productId']}',productName:'${m['productName']}',
+    type:'${m['type']}',date:'${m['date']}',note:'${m['note']}',
+    quantity:(m['quantity'] as num).toInt(),
+    unitPrice:(m['unitPrice'] as num).toDouble(),
+    unitCost:(m['unitCost'] as num).toDouble());
 }
 
-class SilaApp extends StatelessWidget {
-  const SilaApp({super.key});
+class StockApp extends StatelessWidget {
+  const StockApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    title: 'صِلة التعليمي',
-    theme: ThemeData(
-      useMaterial3: true,
-      colorSchemeSeed: const Color(0xff2563eb),
-      scaffoldBackgroundColor: const Color(0xfff4f7fc),
-      inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    ),
-    home: const TeacherPage(),
+    debugShowCheckedModeBanner:false, title:'المخزون الذكي',
+    theme:ThemeData(useMaterial3:true,colorSchemeSeed:blue,
+      scaffoldBackgroundColor:bg,
+      inputDecorationTheme:InputDecorationTheme(
+        border:OutlineInputBorder(borderRadius:BorderRadius.circular(12)))),
+    home:const Directionality(textDirection:TextDirection.rtl,child:StockHome()));
+}
+
+class StockHome extends StatefulWidget {
+  const StockHome({super.key});
+  @override State<StockHome> createState()=>_StockHomeState();
+}
+
+class _StockHomeState extends State<StockHome> {
+  final List<Product> products=[];
+  final List<Movement> movements=[];
+  int tab=0;
+  bool loading=true;
+  String search='';
+  final titles=['الرئيسية','المنتجات','الحركات','التنبيهات','التقارير'];
+
+  @override void initState(){super.initState();load();}
+  Future<void> load() async {
+    try {
+      final prefs=await SharedPreferences.getInstance();
+      final p=jsonDecode(prefs.getString('stock_products_v1')??'[]') as List;
+      final m=jsonDecode(prefs.getString('stock_movements_v1')??'[]') as List;
+      products.addAll(p.map((e)=>Product.fromJson(Map<String,dynamic>.from(e))));
+      movements.addAll(m.map((e)=>Movement.fromJson(Map<String,dynamic>.from(e))));
+    } catch (_) { message('تعذر قراءة بعض البيانات المحفوظة'); }
+    if(mounted)setState(()=>loading=false);
+  }
+  Future<void> save() async {
+    try {
+      final prefs=await SharedPreferences.getInstance();
+      final a=await prefs.setString('stock_products_v1',jsonEncode(products.map((e)=>e.toJson()).toList()));
+      final b=await prefs.setString('stock_movements_v1',jsonEncode(movements.map((e)=>e.toJson()).toList()));
+      if(!a||!b)message('تعذر حفظ البيانات');
+    } catch (_) {message('حدث خطأ أثناء حفظ البيانات');}
+  }
+  void message(String s){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));}
+  String money(num n)=>n.toStringAsFixed(2);
+  String date(DateTime d)=>'${d.year}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+  String uniqueId()=>DateTime.now().microsecondsSinceEpoch.toString();
+  double get stockValue=>products.fold(0.0,(v,p)=>v+p.cost*p.quantity);
+  int get lowCount=>products.where((p)=>p.quantity<=p.minimum).length;
+  DateTime? expiryOf(Product p)=>DateTime.tryParse(p.expiry);
+  bool expired(Product p){final d=expiryOf(p);return d!=null&&d.isBefore(DateTime.now().copyWith(hour:0,minute:0,second:0,millisecond:0,microsecond:0));}
+  bool expiring(Product p){final d=expiryOf(p);if(d==null)return false;final days=d.difference(DateTime.now()).inDays;return days>=0&&days<=30;}
+  double get sales=>movements.where((m)=>m.type=='بيع').fold(0.0,(v,m)=>v+m.quantity*m.unitPrice);
+  double get cogs=>movements.where((m)=>m.type=='بيع').fold(0.0,(v,m)=>v+m.quantity*m.unitCost);
+  double get purchases=>movements.where((m)=>m.type=='شراء').fold(0.0,(v,m)=>v+m.quantity*m.unitPrice);
+
+  @override Widget build(BuildContext context)=>Scaffold(
+    appBar:AppBar(backgroundColor:blue,foregroundColor:Colors.white,
+      title:Text(titles[tab]),actions:[IconButton(icon:const Icon(Icons.inventory_2_outlined),onPressed:()=>setState(()=>tab=1))]),
+    body:loading?const Center(child:CircularProgressIndicator()):IndexedStack(index:tab,children:[dashboard(),productPage(),movementPage(),alertsPage(),reportPage()]),
+    bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),
+      labelBehavior:NavigationDestinationLabelBehavior.alwaysShow,
+      destinations:const [
+        NavigationDestination(icon:Icon(Icons.home_outlined),label:'الرئيسية'),
+        NavigationDestination(icon:Icon(Icons.inventory_2_outlined),label:'المنتجات'),
+        NavigationDestination(icon:Icon(Icons.swap_horiz),label:'الحركات'),
+        NavigationDestination(icon:Icon(Icons.notifications_outlined),label:'التنبيهات'),
+        NavigationDestination(icon:Icon(Icons.bar_chart_outlined),label:'التقارير')]),
   );
-}
 
-class TeacherPage extends StatefulWidget {
-  const TeacherPage({super.key});
-  @override
-  State<TeacherPage> createState() => _TeacherPageState();
-}
+  Widget tileStat(String title,String value,IconData icon){return Card(child:Padding(padding:const EdgeInsets.all(15),child:Column(children:[Icon(icon,color:blue,size:30),const SizedBox(height:9),FittedBox(child:Text(value,style:const TextStyle(fontWeight:FontWeight.bold,fontSize:22))),Text(title,textAlign:TextAlign.center)])));}
+  Widget dashboard()=>ListView(padding:const EdgeInsets.all(16),children:[
+    const Text('مرحبًا بك في المخزون الذكي',style:TextStyle(fontSize:23,fontWeight:FontWeight.bold)),
+    const SizedBox(height:6),const Text('ملخص نشاط المحل التجاري'),const SizedBox(height:20),
+    Row(children:[Expanded(child:tileStat('المنتجات','${products.length}',Icons.inventory)),Expanded(child:tileStat('قيمة المخزون',money(stockValue),Icons.payments))]),
+    Row(children:[Expanded(child:tileStat('نقص المخزون','$lowCount',Icons.warning_amber)),Expanded(child:tileStat('المبيعات',money(sales),Icons.point_of_sale))]),
+    const SizedBox(height:20),FilledButton.icon(onPressed:()=>productForm(),icon:const Icon(Icons.add),label:const Text('إضافة منتج جديد')),
+    const SizedBox(height:8),OutlinedButton.icon(onPressed:()=>setState(()=>tab=2),icon:const Icon(Icons.swap_horiz),label:const Text('تسجيل شراء أو بيع')),
+    const SizedBox(height:18),const Text('آخر الحركات',style:TextStyle(fontSize:19,fontWeight:FontWeight.bold)),
+    ...movements.reversed.take(5).map(movementTile),
+    if(movements.isEmpty)const Padding(padding:EdgeInsets.all(20),child:Text('لا توجد حركات بعد')),
+  ]);
 
-class _TeacherPageState extends State<TeacherPage> {
-  int tab = 0;
-  int nextId = 1004;
-  String teacher = 'المعلم', school = 'مدرستي', subject = 'الرياضيات';
-  String filter = 'الكل', search = '';
-  final grades = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع'];
-  final students = <Student>[
-    Student(1001, 'أحمد محمد', 'الأول', 'أ', 'محمد أحمد', ''),
-    Student(1002, 'محمد علي', 'الثاني', 'أ', 'علي محمد', ''),
-    Student(1003, 'خالد عبدالله', 'الثالث', 'ب', 'عبدالله خالد', ''),
-  ];
-  final Map<int, Map<String, int>> scores = {};
-  final Map<String, Map<int, String>> attendance = {};
-  final homeworks = <Homework>[];
-  final announcements = <String>[];
-  final Map<String, int> weights = {'تحريري': 50, 'شفوي': 20, 'نشاط': 20, 'سلوك': 10};
-  final tabs = ['الرئيسية', 'الطلاب', 'الدرجات', 'الحضور', 'الواجبات', 'المزيد'];
-  final icons = [Icons.dashboard_outlined, Icons.people_outline, Icons.grade_outlined, Icons.fact_check_outlined, Icons.menu_book_outlined, Icons.more_horiz];
+  Widget productPage(){final filtered=products.where((p)=>p.name.toLowerCase().contains(search.toLowerCase())||p.barcode.contains(search)||p.category.contains(search)).toList();
+    return Column(children:[Padding(padding:const EdgeInsets.all(12),child:Column(children:[
+      SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:()=>productForm(),icon:const Icon(Icons.add),label:const Text('إضافة منتج'))),
+      const SizedBox(height:10),TextField(onChanged:(s)=>setState(()=>search=s),decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'بحث بالاسم أو الباركود أو التصنيف')),
+    ])),Expanded(child:filtered.isEmpty?const Center(child:Text('لا توجد منتجات مطابقة')):ListView.builder(itemCount:filtered.length,itemBuilder:(c,i){final p=filtered[i];return Card(margin:const EdgeInsets.symmetric(horizontal:12,vertical:5),child:ListTile(
+      leading:CircleAvatar(child:Text('${p.quantity}')),
+      title:Text(p.name,style:const TextStyle(fontWeight:FontWeight.bold)),
+      subtitle:Text('${p.category} | شراء: ${money(p.cost)} | بيع: ${money(p.price)}\nالحد الأدنى: ${p.minimum}${p.expiry.isEmpty?'':' | الصلاحية: ${p.expiry}'}'),
+      isThreeLine:true,trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit')productForm(product:p);if(v=='delete')deleteProduct(p);if(v=='move')movementForm(selected:p);},itemBuilder:(c)=>const [
+        PopupMenuItem(value:'edit',child:Text('تعديل')),
+        PopupMenuItem(value:'move',child:Text('شراء / بيع / تسوية')),
+        PopupMenuItem(value:'delete',child:Text('حذف'))]),
+    ));}))) ]);
+  }
 
-  String get today => DateTime.now().toIso8601String().substring(0, 10);
-  void message(String value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
-  InputDecoration field(String label) => InputDecoration(labelText: label);
+  Future<void> productForm({Product? product}) async {
+    final name=TextEditingController(text:product?.name??'');
+    final category=TextEditingController(text:product?.category??'عام');
+    final barcode=TextEditingController(text:product?.barcode??'');
+    final cost=TextEditingController(text:product==null?'':product.cost.toString());
+    final price=TextEditingController(text:product==null?'':product.price.toString());
+    final quantity=TextEditingController(text:product==null?'0':product.quantity.toString());
+    final minimum=TextEditingController(text:product==null?'5':product.minimum.toString());
+    final expiry=TextEditingController(text:product?.expiry??'');
+    final key=GlobalKey<FormState>();
+    await showDialog<void>(context:context,builder:(dc)=>Directionality(textDirection:TextDirection.rtl,child:AlertDialog(
+      title:Text(product==null?'إضافة منتج':'تعديل المنتج'),
+      content:SizedBox(width:double.maxFinite,child:SingleChildScrollView(child:Form(key:key,child:Column(mainAxisSize:MainAxisSize.min,children:[
+        field(name,'اسم المنتج',required:true),field(category,'التصنيف'),field(barcode,'الباركود (اختياري)'),
+        field(cost,'سعر الشراء',numeric:true,required:true),field(price,'سعر البيع',numeric:true,required:true),
+        if(product==null)field(quantity,'الكمية الابتدائية',numeric:true,required:true),
+        field(minimum,'الحد الأدنى',numeric:true,required:true),
+        TextFormField(controller:expiry,readOnly:true,decoration:InputDecoration(labelText:'تاريخ الانتهاء (اختياري)',suffixIcon:IconButton(icon:const Icon(Icons.calendar_month),onPressed:()async{
+          final d=await showDatePicker(context:dc,initialDate:DateTime.tryParse(expiry.text)??DateTime.now(),firstDate:DateTime(2020),lastDate:DateTime(2100));if(d!=null)expiry.text=date(d);
+        })),),
+        TextButton(onPressed:()=>expiry.clear(),child:const Text('مسح تاريخ الصلاحية')),
+      ])))),actions:[TextButton(onPressed:()=>Navigator.pop(dc),child:const Text('إلغاء')),
+        FilledButton(onPressed:()async{
+          if(!key.currentState!.validate())return;
+          final c=double.tryParse(cost.text.trim()),pr=double.tryParse(price.text.trim());
+          final q=int.tryParse(quantity.text.trim()),min=int.tryParse(minimum.text.trim());
+          if(c==null||pr==null||min==null||c<0||pr<0||min<0||(product==null&&(q==null||q<0))){message('تحقق من القيم الرقمية');return;}
+          setState((){
+            if(product==null){products.add(Product(id:uniqueId(),name:name.text.trim(),category:category.text.trim(),barcode:barcode.text.trim(),expiry:expiry.text.trim(),cost:c,price:pr,quantity:q!,minimum:min));}
+            else {product.name=name.text.trim();product.category=category.text.trim();product.barcode=barcode.text.trim();product.expiry=expiry.text.trim();product.cost=c;product.price=pr;product.minimum=min;}
+          });
+          await save();if(dc.mounted)Navigator.pop(dc);
+        },child:const Text('حفظ'))],
+    )));
+    name.dispose();category.dispose();barcode.dispose();cost.dispose();price.dispose();quantity.dispose();minimum.dispose();expiry.dispose();
+  }
 
-  Future<void> editStudent([Student? s]) async {
-    final id = TextEditingController(text: s?.id.toString() ?? nextId.toString());
-    final name = TextEditingController(text: s?.name ?? '');
-    final parent = TextEditingController(text: s?.parent ?? '');
-    final phone = TextEditingController(text: s?.phone ?? '');
-    String grade = s?.grade ?? grades.first;
-    String section = s?.section ?? 'أ';
-    final key = GlobalKey<FormState>();
-    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, change) => AlertDialog(
-      title: Text(s == null ? 'إضافة طالب' : 'تعديل الطالب'),
-      content: SizedBox(width: double.maxFinite, child: SingleChildScrollView(child: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextFormField(controller: id, enabled: s == null, keyboardType: TextInputType.number, decoration: field('الرقم المدرسي'), validator: (v) {
-          final number = int.tryParse(v ?? '');
-          if (number == null) return 'أدخل رقماً صحيحاً';
-          if (s == null && students.any((x) => x.id == number)) return 'الرقم مستخدم';
-          return null;
-        }),
-        const SizedBox(height: 10),
-        TextFormField(controller: name, decoration: field('اسم الطالب'), validator: (v) => (v ?? '').trim().isEmpty ? 'الاسم مطلوب' : null),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(value: grade, decoration: field('الصف'), items: grades.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => change(() => grade = v ?? grade)),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(value: section, decoration: field('الفصل'), items: ['أ','ب','ج','د'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => change(() => section = v ?? section)),
-        const SizedBox(height: 10),
-        TextFormField(controller: parent, decoration: field('اسم ولي الأمر')),
-        const SizedBox(height: 10),
-        TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: field('هاتف ولي الأمر')),
-      ])))),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
-        if (!key.currentState!.validate()) return;
-        setState(() {
-          if (s == null) {
-            final number = int.parse(id.text);
-            students.add(Student(number, name.text.trim(), grade, section, parent.text.trim(), phone.text.trim()));
-            if (number >= nextId) nextId = number + 1;
-          } else {
-            s.name = name.text.trim(); s.grade = grade; s.section = section;
-            s.parent = parent.text.trim(); s.phone = phone.text.trim();
-          }
+  Widget field(TextEditingController c,String label,{bool numeric=false,bool required=false})=>Padding(padding:const EdgeInsets.only(bottom:12),child:TextFormField(
+    controller:c,keyboardType:numeric?const TextInputType.numberWithOptions(decimal:true):TextInputType.text,
+    decoration:InputDecoration(labelText:label),validator:(s){if(required&&(s==null||s.trim().isEmpty))return 'هذا الحقل مطلوب';return null;}));
+
+  Future<void> deleteProduct(Product p)async{
+    final yes=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('حذف المنتج'),content:Text('هل تريد حذف ${p.name}؟ سيبقى سجل الحركات محفوظًا.'),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('إلغاء')),FilledButton(onPressed:()=>Navigator.pop(c,true),child:const Text('حذف'))]));
+    if(yes==true){setState(()=>products.remove(p));await save();}
+  }
+
+  Widget movementPage()=>Column(children:[Padding(padding:const EdgeInsets.all(12),child:SizedBox(width:double.infinity,child:FilledButton.icon(onPressed:()=>movementForm(),icon:const Icon(Icons.add),label:const Text('تسجيل حركة مخزون')))),
+    Expanded(child:movements.isEmpty?const Center(child:Text('لا توجد حركات مسجلة')):ListView(children:movements.reversed.map(movementTile).toList()))]);
+  Widget movementTile(Movement m)=>Card(margin:const EdgeInsets.symmetric(horizontal:12,vertical:5),child:ListTile(
+    leading:Icon(m.type=='بيع'?Icons.trending_down:m.type=='شراء'?Icons.trending_up:Icons.tune,color:m.type=='بيع'?Colors.red:Colors.green),
+    title:Text('${m.type} - ${m.productName}'),
+    subtitle:Text('${m.date}\n${m.note.isEmpty?'بدون ملاحظات':m.note}'),isThreeLine:true,
+    trailing:Text('${m.quantity}\n${money(m.quantity*m.unitPrice)}',textAlign:TextAlign.center)));
+
+  Future<void> movementForm({Product? selected}) async {
+    if(products.isEmpty){message('أضف منتجًا أولًا');return;}
+    Product chosen=selected??products.first;
+    String type='شراء';
+    final quantity=TextEditingController(text:'1');
+    final note=TextEditingController();
+    final unit=TextEditingController(text:chosen.cost.toString());
+    final key=GlobalKey<FormState>();
+    await showDialog<void>(context:context,builder:(dc)=>StatefulBuilder(builder:(dc,update)=>Directionality(textDirection:TextDirection.rtl,child:AlertDialog(
+      title:const Text('حركة مخزون جديدة'),content:SizedBox(width:double.maxFinite,child:SingleChildScrollView(child:Form(key:key,child:Column(mainAxisSize:MainAxisSize.min,children:[
+        DropdownButtonFormField<String>(value:chosen.id,isExpanded:true,decoration:const InputDecoration(labelText:'المنتج'),items:products.map((p)=>DropdownMenuItem(value:p.id,child:Text(p.name,overflow:TextOverflow.ellipsis))).toList(),onChanged:(v){if(v==null)return;update((){chosen=products.firstWhere((p)=>p.id==v);unit.text=(type=='بيع'?chosen.price:chosen.cost).toString();});}),
+        const SizedBox(height:12),DropdownButtonFormField<String>(value:type,decoration:const InputDecoration(labelText:'نوع الحركة'),items:['شراء','بيع','تسوية زيادة','تسوية نقص'].map((t)=>DropdownMenuItem(value:t,child:Text(t))).toList(),onChanged:(v){if(v==null)return;update((){type=v;unit.text=(type=='بيع'?chosen.price:chosen.cost).toString();});}),
+        const SizedBox(height:12),Text('الكمية الحالية: ${chosen.quantity}'),const SizedBox(height:12),field(quantity,'الكمية',numeric:true,required:true),
+        field(unit,'سعر الوحدة',numeric:true,required:true),field(note,'ملاحظات'),
+      ])))),actions:[TextButton(onPressed:()=>Navigator.pop(dc),child:const Text('إلغاء')),FilledButton(onPressed:()async{
+        if(!key.currentState!.validate())return;
+        final q=int.tryParse(quantity.text.trim()),u=double.tryParse(unit.text.trim());
+        if(q==null||q<=0||u==null||u<0){message('أدخل كمية صحيحة وسعرًا غير سالب');return;}
+        final isOut=type=='بيع'||type=='تسوية نقص';
+        if(isOut&&q>chosen.quantity){message('الكمية غير كافية في المخزون');return;}
+        setState((){
+          chosen.quantity+=isOut?-q:q;
+          movements.add(Movement(id:uniqueId(),productId:chosen.id,productName:chosen.name,type:type,date:DateTime.now().toIso8601String().substring(0,16).replaceFirst('T',' '),note:note.text.trim(),quantity:q,unitPrice:u,unitCost:chosen.cost));
         });
-        Navigator.pop(ctx);
-        message('تم حفظ بيانات الطالب');
-      }, child: const Text('حفظ'))],
-    )));
-    id.dispose(); name.dispose(); parent.dispose(); phone.dispose();
+        await save();if(dc.mounted)Navigator.pop(dc);
+      },child:const Text('تسجيل'))],
+    ))));
+    quantity.dispose();note.dispose();unit.dispose();
   }
 
-  void studentDetails(Student s) {
-    showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(s.name, style: Theme.of(ctx).textTheme.headlineSmall),
-      const SizedBox(height: 12),
-      Text('الرقم: ${s.id}'), Text('الصف: ${s.grade} - الفصل: ${s.section}'),
-      Text('ولي الأمر: ${s.parent.isEmpty ? "غير محدد" : s.parent}'),
-      Text('الهاتف: ${s.phone.isEmpty ? "غير محدد" : s.phone}'),
-      const SizedBox(height: 14),
-      FilledButton.icon(onPressed: () { Navigator.pop(ctx); editStudent(s); }, icon: const Icon(Icons.edit), label: const Text('تعديل')),
-      OutlinedButton.icon(onPressed: () async {
-        Navigator.pop(ctx);
-        final yes = await showDialog<bool>(context: context, builder: (d) => AlertDialog(title: const Text('حذف الطالب؟'), content: Text('سيتم حذف ${s.name} ودرجاته وحضوره التجريبي.'), actions: [TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('إلغاء')), TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('حذف'))]));
-        if (yes == true) setState(() { students.remove(s); scores.remove(s.id); for (final day in attendance.values) { day.remove(s.id); } });
-      }, icon: const Icon(Icons.delete_outline), label: const Text('حذف')),
-    ]))));
-  }
-
-  Widget heading(String title, {Widget? action}) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [Expanded(child: Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold))), if (action != null) action]));
-  Widget stat(String label, String value, IconData icon) => Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [Icon(icon, size: 30, color: const Color(0xff2563eb)), const SizedBox(height: 8), Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)), Text(label)])));
-  Widget dashboard() {
-    final sections = students.map((s) => '${s.grade}-${s.section}').toSet().length;
-    final present = attendance[today]?.values.where((x) => x == 'حاضر').length ?? 0;
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      Text('مرحباً، $teacher', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-      Text('$school • $subject', style: const TextStyle(color: Colors.grey)),
-      const SizedBox(height: 18),
-      Row(children: [Expanded(child: stat('الطلاب', '${students.length}', Icons.people)), Expanded(child: stat('الفصول', '$sections', Icons.class_outlined))]),
-      Row(children: [Expanded(child: stat('حاضر اليوم', '$present', Icons.check_circle_outline)), Expanded(child: stat('الواجبات', '${homeworks.length}', Icons.assignment_outlined))]),
-      const SizedBox(height: 22), heading('الوصول السريع'),
-      Card(child: Column(children: [
-        ListTile(leading: const Icon(Icons.person_add), title: const Text('إضافة طالب'), onTap: () => editStudent()),
-        const Divider(height: 1),
-        ListTile(leading: const Icon(Icons.grade), title: const Text('إدخال الدرجات'), onTap: () => setState(() => tab = 2)),
-        const Divider(height: 1),
-        ListTile(leading: const Icon(Icons.fact_check), title: const Text('تسجيل الحضور'), onTap: () => setState(() => tab = 3)),
-        const Divider(height: 1),
-        ListTile(leading: const Icon(Icons.campaign), title: const Text('الإعلانات'), onTap: () => setState(() => tab = 5)),
-      ])),
-      const SizedBox(height: 16),
-      heading('آخر الإعلانات'),
-      if (announcements.isEmpty) const Text('لا توجد إعلانات بعد') else ...announcements.reversed.take(3).map((x) => Card(child: ListTile(leading: const Icon(Icons.campaign), title: Text(x)))),
+  Widget alertsPage(){final low=products.where((p)=>p.quantity<=p.minimum).toList();final expiry=products.where((p)=>expired(p)||expiring(p)).toList();
+    return ListView(padding:const EdgeInsets.all(14),children:[
+      const Text('تنبيهات نقص المخزون',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+      if(low.isEmpty)const ListTile(title:Text('لا توجد منتجات منخفضة المخزون')),
+      ...low.map((p)=>Card(child:ListTile(leading:const Icon(Icons.warning_amber,color:Colors.orange),title:Text(p.name),subtitle:Text('المتاح: ${p.quantity} | الحد الأدنى: ${p.minimum}')))),
+      const SizedBox(height:20),const Text('تنبيهات الصلاحية (30 يومًا)',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
+      if(expiry.isEmpty)const ListTile(title:Text('لا توجد منتجات منتهية أو قريبة الانتهاء')),
+      ...expiry.map((p)=>Card(child:ListTile(leading:Icon(Icons.event_busy,color:expired(p)?Colors.red:Colors.orange),title:Text(p.name),subtitle:Text('${expired(p)?'منتهي الصلاحية':'قريب الانتهاء'} | ${p.expiry}')))),
     ]);
   }
-
-  Widget studentPage() {
-    final visible = students.where((s) => (filter == 'الكل' || s.grade == filter) && (s.name.contains(search) || s.id.toString().contains(search))).toList();
-    return Column(children: [
-      Padding(padding: const EdgeInsets.all(14), child: Column(children: [
-        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => editStudent(), icon: const Icon(Icons.add), label: const Text('إضافة طالب'))),
-        const SizedBox(height: 12),
-        TextField(decoration: field('بحث بالاسم أو الرقم').copyWith(prefixIcon: const Icon(Icons.search)), onChanged: (v) => setState(() => search = v)),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(value: filter, decoration: field('تصفية حسب الصف'), items: ['الكل', ...grades].map((x) => DropdownMenuItem(value: x, child: Text(x == 'الكل' ? 'جميع الصفوف' : 'الصف $x'))).toList(), onChanged: (v) => setState(() => filter = v ?? 'الكل')),
-      ])),
-      Expanded(child: visible.isEmpty ? const Center(child: Text('لا يوجد طلاب مطابقون')) : ListView.builder(itemCount: visible.length, itemBuilder: (_, i) {
-        final s = visible[i];
-        return Card(margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 5), child: ListTile(leading: const CircleAvatar(child: Icon(Icons.person)), title: Text(s.name), subtitle: Text('الصف ${s.grade} • الفصل ${s.section} • ${s.id}'), trailing: const Icon(Icons.chevron_left), onTap: () => studentDetails(s)));
-      })),
-    ]);
-  }
-
-  Future<void> editWeights() async {
-    final controllers = {for (final k in weights.keys) k: TextEditingController(text: weights[k].toString())};
-    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('توزيع الدرجة من 100'),
-      content: Column(mainAxisSize: MainAxisSize.min, children: controllers.entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 8), child: TextField(controller: e.value, keyboardType: TextInputType.number, decoration: field(e.key)))).toList()),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
-        final values = controllers.map((k,v) => MapEntry(k, int.tryParse(v.text) ?? -1));
-        if (values.values.any((x) => x < 0) || values.values.reduce((a,b) => a+b) != 100) { message('يجب أن يكون مجموع التوزيع 100'); return; }
-        setState(() => weights.addAll(values)); Navigator.pop(ctx);
-      }, child: const Text('حفظ'))],
-    ));
-    for (final c in controllers.values) { c.dispose(); }
-  }
-
-  Future<void> editScore(Student s) async {
-    final old = scores[s.id] ?? {};
-    final controllers = {for (final k in weights.keys) k: TextEditingController(text: (old[k] ?? 0).toString())};
-    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
-      title: Text('درجات ${s.name}'),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: controllers.entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 10), child: TextField(controller: e.value, keyboardType: TextInputType.number, decoration: field('${e.key} / ${weights[e.key]}')))).toList())),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
-        final values = controllers.map((k,v) => MapEntry(k, int.tryParse(v.text) ?? -1));
-        if (values.entries.any((e) => e.value < 0 || e.value > weights[e.key]!)) { message('تأكد من أن كل درجة ضمن الحد المسموح'); return; }
-        setState(() => scores[s.id] = values); Navigator.pop(ctx);
-      }, child: const Text('حفظ'))],
-    ));
-    for (final c in controllers.values) { c.dispose(); }
-  }
-
-  Widget gradePage() => ListView(padding: const EdgeInsets.all(14), children: [
-    heading('توزيع الدرجات', action: TextButton.icon(onPressed: editWeights, icon: const Icon(Icons.tune), label: const Text('تعديل'))),
-    Card(child: Padding(padding: const EdgeInsets.all(14), child: Wrap(spacing: 14, runSpacing: 8, children: weights.entries.map((e) => Chip(label: Text('${e.key}: ${e.value}'))).toList()))),
-    const SizedBox(height: 16), heading('درجات الطلاب'),
-    if (students.isEmpty) const Text('أضف الطلاب أولاً'),
-    ...students.map((s) {
-      final total = scores[s.id]?.values.fold<int>(0, (a,b) => a+b);
-      return Card(child: ListTile(leading: const Icon(Icons.grade_outlined), title: Text(s.name), subtitle: Text('الصف ${s.grade} • ${total == null ? "لم يتم التقييم" : "$total / 100"}'), trailing: const Icon(Icons.edit_outlined), onTap: () => editScore(s)));
-    }),
-    const Text('الدرجات تجريبية، ويمكن تعديل توزيعها لكل مادة لاحقاً.', style: TextStyle(color: Colors.grey)),
+  Widget reportPage()=>ListView(padding:const EdgeInsets.all(16),children:[
+    const Text('التقارير المالية والمخزنية',style:TextStyle(fontSize:22,fontWeight:FontWeight.bold)),const SizedBox(height:16),
+    reportRow('قيمة المخزون بسعر التكلفة',stockValue),reportRow('إجمالي المبيعات المسجلة',sales),
+    reportRow('تكلفة البضاعة المباعة',cogs),reportRow('الربح الإجمالي التقديري',sales-cogs),
+    reportRow('إجمالي المشتريات المسجلة',purchases),
+    Card(child:Padding(padding:const EdgeInsets.all(14),child:Text('ملاحظة: الربح هنا = المبيعات - تكلفة البضاعة المباعة فقط. لا يشمل الإيجارات والرواتب والمصروفات والضرائب والمرتجعات. تسويات المخزون لا تدخل في المبيعات أو المشتريات.'))),
+    const SizedBox(height:12),Text('عدد حركات المخزون: ${movements.length}'),Text('عدد الأصناف: ${products.length}'),
   ]);
-
-  Widget attendancePage() {
-    final day = attendance.putIfAbsent(today, () => {});
-    return ListView(padding: const EdgeInsets.all(14), children: [
-      heading('الحضور اليومي'),
-      Card(child: ListTile(leading: const Icon(Icons.calendar_today), title: Text('التاريخ: $today'), subtitle: const Text('اختر حالة كل طالب'))),
-      const SizedBox(height: 12),
-      if (students.isEmpty) const Text('أضف الطلاب أولاً'),
-      ...students.map((s) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, children: ['حاضر','غائب','متأخر'].map((status) => ChoiceChip(label: Text(status), selected: day[s.id] == status, onSelected: (_) => setState(() => day[s.id] = status))).toList()),
-      ])))),
-      const SizedBox(height: 10),
-      Text('تم تسجيل ${day.length} من ${students.length} طلاب'),
-    ]);
-  }
-
-  Future<void> addHomework() async {
-    final title = TextEditingController();
-    final desc = TextEditingController();
-    final due = TextEditingController(text: today);
-    String grade = grades.first;
-    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, change) => AlertDialog(
-      title: const Text('واجب جديد'),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: title, decoration: field('عنوان الواجب')),
-        const SizedBox(height: 10), TextField(controller: desc, maxLines: 3, decoration: field('تفاصيل الواجب')),
-        const SizedBox(height: 10), DropdownButtonFormField<String>(value: grade, decoration: field('الصف'), items: grades.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => change(() => grade = v ?? grade)),
-        const SizedBox(height: 10), TextField(controller: due, readOnly: true, decoration: field('موعد التسليم').copyWith(suffixIcon: const Icon(Icons.calendar_today)), onTap: () async {
-          final d = await showDatePicker(context: ctx, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
-          if (d != null) change(() => due.text = d.toIso8601String().substring(0,10));
-        }),
-      ])),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
-        if (title.text.trim().isEmpty) { message('أدخل عنوان الواجب'); return; }
-        setState(() => homeworks.add(Homework(title.text.trim(), desc.text.trim(), grade, due.text)));
-        Navigator.pop(ctx);
-      }, child: const Text('إضافة'))],
-    )));
-    title.dispose(); desc.dispose(); due.dispose();
-  }
-
-  Widget homeworkPage() => ListView(padding: const EdgeInsets.all(14), children: [
-    heading('الواجبات', action: FilledButton.icon(onPressed: addHomework, icon: const Icon(Icons.add), label: const Text('جديد'))),
-    if (homeworks.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('لا توجد واجبات بعد'))),
-    ...homeworks.reversed.map((h) => Card(child: ListTile(leading: const Icon(Icons.assignment_outlined), title: Text(h.title), subtitle: Text('الصف ${h.grade} • التسليم ${h.due}\n${h.description}'), isThreeLine: h.description.isNotEmpty, trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => homeworks.remove(h)))))),
-  ]);
-
-  Future<void> addAnnouncement() async {
-    final textController = TextEditingController();
-    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('إعلان جديد'), content: TextField(controller: textController, maxLines: 3, decoration: field('نص الإعلان')),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
-        if (textController.text.trim().isEmpty) return;
-        setState(() => announcements.add(textController.text.trim())); Navigator.pop(ctx);
-      }, child: const Text('نشر تجريبي'))],
-    ));
-    textController.dispose();
-  }
-
-  Future<void> editTeacher() async {
-    final name = TextEditingController(text: teacher);
-    final schoolName = TextEditingController(text: school);
-    final subjectName = TextEditingController(text: subject);
-    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('بيانات المعلم'),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: name, decoration: field('اسم المعلم')), const SizedBox(height: 10), TextField(controller: schoolName, decoration: field('المدرسة')), const SizedBox(height: 10), TextField(controller: subjectName, decoration: field('المادة'))]),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () { setState(() { teacher = name.text.trim(); school = schoolName.text.trim(); subject = subjectName.text.trim(); }); Navigator.pop(ctx); }, child: const Text('حفظ'))],
-    ));
-    name.dispose(); schoolName.dispose(); subjectName.dispose();
-  }
-
-  Widget morePage() => ListView(padding: const EdgeInsets.all(14), children: [
-    heading('المعلم والإعدادات'),
-    Card(child: ListTile(leading: const Icon(Icons.account_circle_outlined), title: Text(teacher), subtitle: Text('$school • $subject'), trailing: const Icon(Icons.edit), onTap: editTeacher)),
-    const SizedBox(height: 16), heading('الإعلانات'),
-    SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: addAnnouncement, icon: const Icon(Icons.campaign), label: const Text('إضافة إعلان'))),
-    ...announcements.reversed.map((a) => Card(child: ListTile(title: Text(a), trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => announcements.remove(a)))))),
-    const SizedBox(height: 16),
-    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('نسخة تجريبية: البيانات محفوظة في الذاكرة فقط وتُفقد بعد إغلاق التطبيق. لا توجد مصادقة أو إرسال إشعارات حقيقية.'))),
-  ]);
-
-  @override
-  Widget build(BuildContext context) => Directionality(textDirection: TextDirection.rtl, child: Scaffold(
-    appBar: AppBar(title: Text(tabs[tab]), backgroundColor: const Color(0xff2563eb), foregroundColor: Colors.white),
-    body: IndexedStack(index: tab, children: [dashboard(), studentPage(), gradePage(), attendancePage(), homeworkPage(), morePage()]),
-    bottomNavigationBar: NavigationBar(height: 72, selectedIndex: tab, labelBehavior: NavigationDestinationLabelBehavior.alwaysShow, onDestinationSelected: (v) => setState(() => tab = v), destinations: List.generate(tabs.length, (i) => NavigationDestination(icon: Icon(icons[i]), label: tabs[i]))),
-  ));
+  Widget reportRow(String title,double value)=>Card(child:ListTile(title:Text(title),trailing:Text(money(value),style:const TextStyle(fontWeight:FontWeight.bold,fontSize:17))));
 }
