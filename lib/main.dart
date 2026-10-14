@@ -1,6 +1,9 @@
+
 import 'package:flutter/material.dart';
 
-void main() => runApp(const SchoolApp());
+void main() {
+  runApp(const SchoolApp());
+}
 
 class SchoolApp extends StatelessWidget {
   const SchoolApp({super.key});
@@ -14,26 +17,73 @@ class SchoolApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: const Color(0xFF2563EB),
         scaffoldBackgroundColor: const Color(0xFFF4F7FC),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          centerTitle: false,
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: const EdgeInsets.all(14),
+        ),
       ),
       home: const LoginPage(),
     );
   }
 }
 
+// نموذج بيانات الطالب
 class Student {
-  final String name;
-  final String grade;
-  Student(this.name, this.grade);
+  final String id;
+  String name;
+  String grade;
+  String section;
+  String parentName;
+  String parentPhone;
+
+  Student({
+    required this.id,
+    required this.name,
+    required this.grade,
+    required this.section,
+    required this.parentName,
+    required this.parentPhone,
+  });
 }
 
+// بيانات تجريبية مشتركة بين الصفحات
 class SchoolData {
-  static final students = <Student>[
-    Student('أحمد محمد', 'الصف الأول'),
-    Student('محمد علي', 'الصف الثاني'),
-    Student('خالد عبدالله', 'الصف الثالث'),
+  static final List<Student> students = [
+    Student(
+      id: '1001',
+      name: 'أحمد محمد',
+      grade: 'الأول',
+      section: 'أ',
+      parentName: 'محمد أحمد',
+      parentPhone: '',
+    ),
+    Student(
+      id: '1002',
+      name: 'محمد علي',
+      grade: 'الثاني',
+      section: 'أ',
+      parentName: 'علي محمد',
+      parentPhone: '',
+    ),
+    Student(
+      id: '1003',
+      name: 'خالد عبدالله',
+      grade: 'الثالث',
+      section: 'ب',
+      parentName: 'عبدالله خالد',
+      parentPhone: '',
+    ),
   ];
 }
 
+// شاشة اختيار الحساب
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
@@ -61,18 +111,22 @@ class LoginPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   const Text(
                     'منصة التواصل المدرسي',
                     style: TextStyle(color: Colors.grey),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 45),
                   const Text(
                     'اختر نوع الحساب للتجربة',
-                    style: TextStyle(fontSize: 18),
+                    style: TextStyle(fontSize: 19),
                   ),
-                  const SizedBox(height: 20),
-                  roleButton(context, 'المعلم', Icons.person),
+                  const SizedBox(height: 22),
+                  roleButton(
+                    context,
+                    'المعلم',
+                    Icons.person,
+                  ),
                   roleButton(
                     context,
                     'ولي الأمر',
@@ -98,13 +152,16 @@ class LoginPage extends StatelessWidget {
     IconData icon,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: SizedBox(
         width: double.infinity,
         height: 58,
         child: ElevatedButton.icon(
           icon: Icon(icon),
-          label: Text(role),
+          label: Text(
+            role,
+            style: const TextStyle(fontSize: 18),
+          ),
           onPressed: () {
             Navigator.pushReplacement(
               context,
@@ -119,9 +176,14 @@ class LoginPage extends StatelessWidget {
   }
 }
 
+// الصفحة الرئيسية
 class HomePage extends StatefulWidget {
   final String role;
-  const HomePage({super.key, required this.role});
+
+  const HomePage({
+    super.key,
+    required this.role,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -129,13 +191,27 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selected = 0;
+  String search = '';
+  String selectedGrade = 'الكل';
 
-  final titles = [
+  final List<String> titles = [
     'الرئيسية',
     'الطلاب',
     'الدرجات',
     'الحضور',
     'الواجبات',
+  ];
+
+  final List<String> grades = [
+    'الأول',
+    'الثاني',
+    'الثالث',
+    'الرابع',
+    'الخامس',
+    'السادس',
+    'السابع',
+    'الثامن',
+    'التاسع',
   ];
 
   @override
@@ -144,11 +220,10 @@ class _HomePageState extends State<HomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFF2563EB),
-          foregroundColor: Colors.white,
           title: Text(titles[selected]),
           actions: [
             IconButton(
+              tooltip: 'تسجيل الخروج',
               icon: const Icon(Icons.logout),
               onPressed: () {
                 Navigator.pushReplacement(
@@ -167,19 +242,19 @@ class _HomePageState extends State<HomePage> {
             dashboard(),
             studentsPage(),
             simplePage(
-              'الدرجات',
+              'إدارة الدرجات',
               Icons.grade,
-              'سيتم إضافة نظام تقييم الطلاب هنا',
+              'سيتم تطوير تسجيل درجات الطلاب هنا',
             ),
             simplePage(
-              'الحضور',
+              'الحضور والغياب',
               Icons.fact_check,
-              'سيتم إضافة تسجيل الحضور والغياب هنا',
+              'سيتم تطوير سجل الحضور هنا',
             ),
             simplePage(
-              'الواجبات',
+              'الواجبات المدرسية',
               Icons.menu_book,
-              'سيتم إضافة الواجبات المدرسية هنا',
+              'سيتم تطوير إدارة الواجبات هنا',
             ),
           ],
         ),
@@ -191,22 +266,27 @@ class _HomePageState extends State<HomePage> {
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
               label: 'الرئيسية',
             ),
             NavigationDestination(
               icon: Icon(Icons.people_outline),
+              selectedIcon: Icon(Icons.people),
               label: 'الطلاب',
             ),
             NavigationDestination(
-              icon: Icon(Icons.grade_outlined),
+              icon: Icon(Icons.star_outline),
+              selectedIcon: Icon(Icons.star),
               label: 'الدرجات',
             ),
             NavigationDestination(
               icon: Icon(Icons.check_circle_outline),
+              selectedIcon: Icon(Icons.check_circle),
               label: 'الحضور',
             ),
             NavigationDestination(
               icon: Icon(Icons.book_outlined),
+              selectedIcon: Icon(Icons.book),
               label: 'الواجبات',
             ),
           ],
@@ -215,20 +295,29 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // لوحة التحكم
   Widget dashboard() {
+    final sections = SchoolData.students
+        .map((s) => '${s.grade}-${s.section}')
+        .toSet()
+        .length;
+
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
         Text(
           'مرحباً بك - ${widget.role}',
           style: const TextStyle(
-            fontSize: 23,
+            fontSize: 25,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
-        const Text('لوحة متابعة العملية التعليمية'),
-        const SizedBox(height: 24),
+        const Text(
+          'لوحة متابعة العملية التعليمية',
+          style: TextStyle(color: Colors.grey),
+        ),
+        const SizedBox(height: 25),
         Row(
           children: [
             Expanded(
@@ -242,13 +331,13 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: statCard(
                 'الفصول',
-                '3',
+                '$sections',
                 Icons.class_,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -268,11 +357,11 @@ class _HomePageState extends State<HomePage> {
             ),
           ],
         ),
-        const SizedBox(height: 25),
+        const SizedBox(height: 28),
         const Text(
           'الوصول السريع',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -280,25 +369,22 @@ class _HomePageState extends State<HomePage> {
         Card(
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(Icons.person_add),
-                title: const Text('إدارة الطلاب'),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: () => setState(() => selected = 1),
+              quickAction(
+                'إدارة الطلاب',
+                Icons.people,
+                1,
               ),
               const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.grade),
-                title: const Text('إدارة الدرجات'),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: () => setState(() => selected = 2),
+              quickAction(
+                'إدارة الدرجات',
+                Icons.grade,
+                2,
               ),
               const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.fact_check),
-                title: const Text('تسجيل الحضور'),
-                trailing: const Icon(Icons.chevron_left),
-                onTap: () => setState(() => selected = 3),
+              quickAction(
+                'تسجيل الحضور',
+                Icons.fact_check,
+                3,
               ),
             ],
           ),
@@ -319,10 +405,10 @@ class _HomePageState extends State<HomePage> {
           children: [
             Icon(
               icon,
-              size: 32,
+              size: 34,
               color: const Color(0xFF2563EB),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               value,
               style: const TextStyle(
@@ -337,209 +423,455 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget quickAction(
+    String title,
+    IconData icon,
+    int index,
+  ) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_left),
+      onTap: () {
+        setState(() => selected = index);
+      },
+    );
+  }
+
+  // صفحة الطلاب
   Widget studentsPage() {
+    final filtered = SchoolData.students.where((student) {
+      final matchSearch =
+          student.name.toLowerCase().contains(
+                search.toLowerCase(),
+              ) ||
+          student.id.contains(search);
+
+      final matchGrade =
+          selectedGrade == 'الكل' ||
+          student.grade == selectedGrade;
+
+      return matchSearch && matchGrade;
+    }).toList();
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('إضافة طالب'),
-              onPressed: addStudent,
-            ),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('إضافة طالب جديد'),
+                  onPressed: () => studentForm(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                onChanged: (value) {
+                  setState(() => search = value);
+                },
+                decoration: const InputDecoration(
+                  hintText: 'ابحث باسم الطالب أو رقمه',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: ValueKey(selectedGrade),
+                initialValue: selectedGrade,
+                decoration: const InputDecoration(
+                  labelText: 'تصفية حسب الصف',
+                ),
+                items: ['الكل', ...grades].map((grade) {
+                  return DropdownMenuItem(
+                    value: grade,
+                    child: Text(
+                      grade == 'الكل'
+                          ? 'جميع الصفوف'
+                          : 'الصف $grade',
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => selectedGrade = value);
+                  }
+                },
+              ),
+            ],
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: SchoolData.students.length,
-            itemBuilder: (context, index) {
-              final student = SchoolData.students[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 5,
+          child: filtered.isEmpty
+              ? const Center(
+                  child: Text('لا توجد نتائج مطابقة'),
+                )
+              : ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final student = filtered[index];
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 5,
+                      ),
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          child: Icon(Icons.person),
+                        ),
+                        title: Text(student.name),
+                        subtitle: Text(
+                          'الصف ${student.grade} - '
+                          'الفصل ${student.section}',
+                        ),
+                        trailing:
+                            const Icon(Icons.chevron_left),
+                        onTap: () => studentProfile(student),
+                      ),
+                    );
+                  },
                 ),
-                child: ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.person),
-                  ),
-                  title: Text(student.name),
-                  subtitle: Text(student.grade),
-                ),
-              );
-            },
-          ),
         ),
       ],
     );
   }
 
-  
-void addStudent() {
-  final nameController = TextEditingController();
-  final parentController = TextEditingController();
-  final phoneController = TextEditingController();
+  // نموذج إضافة وتعديل الطالب
+  void studentForm({Student? student}) {
+    final editing = student != null;
 
-  String selectedGrade = 'الأول';
-  String selectedSection = 'أ';
+    final idController = TextEditingController(
+      text: student?.id ?? '',
+    );
+    final nameController = TextEditingController(
+      text: student?.name ?? '',
+    );
+    final parentController = TextEditingController(
+      text: student?.parentName ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: student?.parentPhone ?? '',
+    );
 
-  final grades = [
-    'الأول', 'الثاني', 'الثالث',
-    'الرابع', 'الخامس', 'السادس',
-    'السابع', 'الثامن', 'التاسع',
-  ];
+    String grade = student?.grade ?? 'الأول';
+    String section = student?.section ?? 'أ';
+    final formKey = GlobalKey<FormState>();
 
-  showDialog(
-    context: context,
-    builder: (dialogContext) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: AlertDialog(
-              title: const Text('إضافة طالب جديد'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'اسم الطالب',
-                          prefixIcon: Icon(Icons.person),
-                        ),
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: AlertDialog(
+                title: Text(
+                  editing
+                      ? 'تعديل بيانات الطالب'
+                      : 'إضافة طالب جديد',
+                ),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextFormField(
+                            controller: idController,
+                            enabled: !editing,
+                            decoration: const InputDecoration(
+                              labelText: 'الرقم المدرسي',
+                              prefixIcon: Icon(Icons.badge),
+                            ),
+                            validator: (value) {
+                              final id = value?.trim() ?? '';
+                              if (id.isEmpty) {
+                                return 'أدخل الرقم المدرسي';
+                              }
+                              if (!editing &&
+                                  SchoolData.students.any(
+                                    (s) => s.id == id,
+                                  )) {
+                                return 'الرقم مستخدم مسبقاً';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'اسم الطالب الكامل',
+                              prefixIcon: Icon(Icons.person),
+                            ),
+                            validator: (value) {
+                              if (value == null ||
+                                  value.trim().isEmpty) {
+                                return 'أدخل اسم الطالب';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey('grade-$grade'),
+                            initialValue: grade,
+                            decoration: const InputDecoration(
+                              labelText: 'الصف الدراسي',
+                            ),
+                            items: grades.map((g) {
+                              return DropdownMenuItem(
+                                value: g,
+                                child: Text('الصف $g'),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setDialogState(() {
+                                  grade = value;
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            key: ValueKey('section-$section'),
+                            initialValue: section,
+                            decoration: const InputDecoration(
+                              labelText: 'الفصل',
+                            ),
+                            items: ['أ', 'ب', 'ج', 'د'].map((s) {
+                              return DropdownMenuItem(
+                                value: s,
+                                child: Text(s),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setDialogState(() {
+                                  section = value;
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: parentController,
+                            decoration: const InputDecoration(
+                              labelText: 'اسم ولي الأمر',
+                              prefixIcon:
+                                  Icon(Icons.family_restroom),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'هاتف ولي الأمر',
+                              prefixIcon: Icon(Icons.phone),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedGrade,
-                        decoration: const InputDecoration(
-                          labelText: 'الصف الدراسي',
-                        ),
-                        items: grades.map((grade) {
-                          return DropdownMenuItem(
-                            value: grade,
-                            child: Text(grade),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() {
-                              selectedGrade = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedSection,
-                        decoration: const InputDecoration(
-                          labelText: 'الفصل',
-                        ),
-                        items: ['أ', 'ب', 'ج', 'د'].map((s) {
-                          return DropdownMenuItem(
-                            value: s,
-                            child: Text(s),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() {
-                              selectedSection = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: parentController,
-                        decoration: const InputDecoration(
-                          labelText: 'اسم ولي الأمر',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'هاتف ولي الأمر',
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                    },
+                    child: const Text('إلغاء'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      if (!formKey.currentState!.validate()) {
+                        return;
+                      }
+
+                      setState(() {
+                        if (editing) {
+                          student.name =
+                              nameController.text.trim();
+                          student.grade = grade;
+                          student.section = section;
+                          student.parentName =
+                              parentController.text.trim();
+                          student.parentPhone =
+                              phoneController.text.trim();
+                        } else {
+                          SchoolData.students.add(
+                            Student(
+                              id: idController.text.trim(),
+                              name: nameController.text.trim(),
+                              grade: grade,
+                              section: section,
+                              parentName:
+                                  parentController.text.trim(),
+                              parentPhone:
+                                  phoneController.text.trim(),
+                            ),
+                          );
+                        }
+                      });
+
+                      Navigator.pop(dialogContext);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            editing
+                                ? 'تم تعديل الطالب بنجاح'
+                                : 'تمت إضافة الطالب بنجاح',
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('حفظ'),
+                  ),
+                ],
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('إلغاء'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final name = nameController.text.trim();
-                    if (name.isEmpty) {
-                      ScaffoldMessenger.of(this.context)
-                          .showSnackBar(
-                        const SnackBar(
-                          content: Text('أدخل اسم الطالب'),
-                        ),
-                      );
-                      return;
-                    }
+            );
+          },
+        );
+      },
+    );
+  }
 
-                    setState(() {
-                      SchoolData.students.add(
-                        Student(
-                          name,
-                          'الصف $selectedGrade - $selectedSection',
-                        ),
-                      );
-                    });
-
-                    Navigator.pop(context);
-                  },
-                  child: const Text('حفظ الطالب'),
-                ),
-              ],
+  // ملف الطالب
+  void studentProfile(Student student) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (pageContext) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('ملف الطالب'),
+              ),
+              body: ListView(
+                padding: const EdgeInsets.all(18),
+                children: [
+                  const CircleAvatar(
+                    radius: 40,
+                    child: Icon(Icons.person, size: 45),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    student.name,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  infoTile(
+                    'الرقم المدرسي',
+                    student.id,
+                  ),
+                  infoTile(
+                    'الصف الدراسي',
+                    student.grade,
+                  ),
+                  infoTile(
+                    'الفصل',
+                    student.section,
+                  ),
+                  infoTile(
+                    'ولي الأمر',
+                    student.parentName,
+                  ),
+                  infoTile(
+                    'رقم الهاتف',
+                    student.parentPhone,
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: const Text('تعديل البيانات'),
+                    onPressed: () {
+                      Navigator.pop(pageContext);
+                      studentForm(student: student);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.delete),
+                    label: const Text('حذف الطالب'),
+                    onPressed: () {
+                      confirmDelete(student, pageContext);
+                    },
+                  ),
+                ],
+              ),
             ),
           );
         },
-      );
-    },
-  );
-}
-
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (nameController.text.trim().isEmpty ||
-                  gradeController.text.trim().isEmpty) {
-                return;
-              }
-              setState(() {
-                SchoolData.students.add(
-                  Student(
-                    nameController.text.trim(),
-                    gradeController.text.trim(),
-                  ),
-                );
-              });
-              Navigator.pop(dialogContext);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
       ),
     );
   }
 
+  Widget infoTile(String label, String value) {
+    return Card(
+      child: ListTile(
+        title: Text(label),
+        subtitle: Text(
+          value.isEmpty ? 'غير محدد' : value,
+        ),
+      ),
+    );
+  }
+
+  // تأكيد الحذف
+  void confirmDelete(
+    Student student,
+    BuildContext profileContext,
+  ) {
+    showDialog<void>(
+      context: profileContext,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text('تأكيد الحذف'),
+            content: Text(
+              'هل تريد حذف الطالب ${student.name}؟',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    SchoolData.students.remove(student);
+                  });
+                  Navigator.pop(dialogContext);
+                  Navigator.pop(profileContext);
+                },
+                child: const Text('حذف'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // الصفحات التي سنطورها لاحقاً
   Widget simplePage(
     String title,
     IconData icon,
