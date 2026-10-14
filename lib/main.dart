@@ -1,909 +1,300 @@
-
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const SchoolApp());
-}
+void main() => runApp(const SilaApp());
 
-class SchoolApp extends StatelessWidget {
-  const SchoolApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'صِلة التعليمي',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF2563EB),
-        scaffoldBackgroundColor: const Color(0xFFF4F7FC),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF2563EB),
-          foregroundColor: Colors.white,
-          centerTitle: false,
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          contentPadding: const EdgeInsets.all(14),
-        ),
-      ),
-      home: const LoginPage(),
-    );
-  }
-}
-
-// نموذج بيانات الطالب
 class Student {
-  final String id;
-  String name;
-  String grade;
-  String section;
-  String parentName;
-  String parentPhone;
-
-  Student({
-    required this.id,
-    required this.name,
-    required this.grade,
-    required this.section,
-    required this.parentName,
-    required this.parentPhone,
-  });
+  final int id;
+  String name, grade, section, parent, phone;
+  Student(this.id, this.name, this.grade, this.section, this.parent, this.phone);
 }
 
-// بيانات تجريبية مشتركة بين الصفحات
-class SchoolData {
-  static final List<Student> students = [
-    Student(
-      id: '1001',
-      name: 'أحمد محمد',
-      grade: 'الأول',
-      section: 'أ',
-      parentName: 'محمد أحمد',
-      parentPhone: '',
-    ),
-    Student(
-      id: '1002',
-      name: 'محمد علي',
-      grade: 'الثاني',
-      section: 'أ',
-      parentName: 'علي محمد',
-      parentPhone: '',
-    ),
-    Student(
-      id: '1003',
-      name: 'خالد عبدالله',
-      grade: 'الثالث',
-      section: 'ب',
-      parentName: 'عبدالله خالد',
-      parentPhone: '',
-    ),
-  ];
+class Homework {
+  String title, description, grade, due;
+  Homework(this.title, this.description, this.grade, this.due);
 }
 
-// شاشة اختيار الحساب
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
-
+class SilaApp extends StatelessWidget {
+  const SilaApp({super.key});
   @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.school_rounded,
-                    size: 90,
-                    color: Color(0xFF2563EB),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'صِلة التعليمي',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'منصة التواصل المدرسي',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 45),
-                  const Text(
-                    'اختر نوع الحساب للتجربة',
-                    style: TextStyle(fontSize: 19),
-                  ),
-                  const SizedBox(height: 22),
-                  roleButton(
-                    context,
-                    'المعلم',
-                    Icons.person,
-                  ),
-                  roleButton(
-                    context,
-                    'ولي الأمر',
-                    Icons.family_restroom,
-                  ),
-                  roleButton(
-                    context,
-                    'الإدارة',
-                    Icons.admin_panel_settings,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => MaterialApp(
+    debugShowCheckedModeBanner: false,
+    title: 'صِلة التعليمي',
+    theme: ThemeData(
+      useMaterial3: true,
+      colorSchemeSeed: const Color(0xff2563eb),
+      scaffoldBackgroundColor: const Color(0xfff4f7fc),
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
-    );
+    ),
+    home: const TeacherPage(),
+  );
+}
+
+class TeacherPage extends StatefulWidget {
+  const TeacherPage({super.key});
+  @override
+  State<TeacherPage> createState() => _TeacherPageState();
+}
+
+class _TeacherPageState extends State<TeacherPage> {
+  int tab = 0;
+  int nextId = 1004;
+  String teacher = 'المعلم', school = 'مدرستي', subject = 'الرياضيات';
+  String filter = 'الكل', search = '';
+  final grades = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع'];
+  final students = <Student>[
+    Student(1001, 'أحمد محمد', 'الأول', 'أ', 'محمد أحمد', ''),
+    Student(1002, 'محمد علي', 'الثاني', 'أ', 'علي محمد', ''),
+    Student(1003, 'خالد عبدالله', 'الثالث', 'ب', 'عبدالله خالد', ''),
+  ];
+  final Map<int, Map<String, int>> scores = {};
+  final Map<String, Map<int, String>> attendance = {};
+  final homeworks = <Homework>[];
+  final announcements = <String>[];
+  final Map<String, int> weights = {'تحريري': 50, 'شفوي': 20, 'نشاط': 20, 'سلوك': 10};
+  final tabs = ['الرئيسية', 'الطلاب', 'الدرجات', 'الحضور', 'الواجبات', 'المزيد'];
+  final icons = [Icons.dashboard_outlined, Icons.people_outline, Icons.grade_outlined, Icons.fact_check_outlined, Icons.menu_book_outlined, Icons.more_horiz];
+
+  String get today => DateTime.now().toIso8601String().substring(0, 10);
+  void message(String value) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+  InputDecoration field(String label) => InputDecoration(labelText: label);
+
+  Future<void> editStudent([Student? s]) async {
+    final id = TextEditingController(text: s?.id.toString() ?? nextId.toString());
+    final name = TextEditingController(text: s?.name ?? '');
+    final parent = TextEditingController(text: s?.parent ?? '');
+    final phone = TextEditingController(text: s?.phone ?? '');
+    String grade = s?.grade ?? grades.first;
+    String section = s?.section ?? 'أ';
+    final key = GlobalKey<FormState>();
+    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, change) => AlertDialog(
+      title: Text(s == null ? 'إضافة طالب' : 'تعديل الطالب'),
+      content: SizedBox(width: double.maxFinite, child: SingleChildScrollView(child: Form(key: key, child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextFormField(controller: id, enabled: s == null, keyboardType: TextInputType.number, decoration: field('الرقم المدرسي'), validator: (v) {
+          final number = int.tryParse(v ?? '');
+          if (number == null) return 'أدخل رقماً صحيحاً';
+          if (s == null && students.any((x) => x.id == number)) return 'الرقم مستخدم';
+          return null;
+        }),
+        const SizedBox(height: 10),
+        TextFormField(controller: name, decoration: field('اسم الطالب'), validator: (v) => (v ?? '').trim().isEmpty ? 'الاسم مطلوب' : null),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(value: grade, decoration: field('الصف'), items: grades.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => change(() => grade = v ?? grade)),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(value: section, decoration: field('الفصل'), items: ['أ','ب','ج','د'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => change(() => section = v ?? section)),
+        const SizedBox(height: 10),
+        TextFormField(controller: parent, decoration: field('اسم ولي الأمر')),
+        const SizedBox(height: 10),
+        TextFormField(controller: phone, keyboardType: TextInputType.phone, decoration: field('هاتف ولي الأمر')),
+      ])))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
+        if (!key.currentState!.validate()) return;
+        setState(() {
+          if (s == null) {
+            final number = int.parse(id.text);
+            students.add(Student(number, name.text.trim(), grade, section, parent.text.trim(), phone.text.trim()));
+            if (number >= nextId) nextId = number + 1;
+          } else {
+            s.name = name.text.trim(); s.grade = grade; s.section = section;
+            s.parent = parent.text.trim(); s.phone = phone.text.trim();
+          }
+        });
+        Navigator.pop(ctx);
+        message('تم حفظ بيانات الطالب');
+      }, child: const Text('حفظ'))],
+    )));
+    id.dispose(); name.dispose(); parent.dispose(); phone.dispose();
   }
 
-  Widget roleButton(
-    BuildContext context,
-    String role,
-    IconData icon,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: SizedBox(
-        width: double.infinity,
-        height: 58,
-        child: ElevatedButton.icon(
-          icon: Icon(icon),
-          label: Text(
-            role,
-            style: const TextStyle(fontSize: 18),
-          ),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => HomePage(role: role),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-// الصفحة الرئيسية
-class HomePage extends StatefulWidget {
-  final String role;
-
-  const HomePage({
-    super.key,
-    required this.role,
-  });
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  int selected = 0;
-  String search = '';
-  String selectedGrade = 'الكل';
-
-  final List<String> titles = [
-    'الرئيسية',
-    'الطلاب',
-    'الدرجات',
-    'الحضور',
-    'الواجبات',
-  ];
-
-  final List<String> grades = [
-    'الأول',
-    'الثاني',
-    'الثالث',
-    'الرابع',
-    'الخامس',
-    'السادس',
-    'السابع',
-    'الثامن',
-    'التاسع',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(titles[selected]),
-          actions: [
-            IconButton(
-              tooltip: 'تسجيل الخروج',
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const LoginPage(),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-        body: IndexedStack(
-          index: selected,
-          children: [
-            dashboard(),
-            studentsPage(),
-            simplePage(
-              'إدارة الدرجات',
-              Icons.grade,
-              'سيتم تطوير تسجيل درجات الطلاب هنا',
-            ),
-            simplePage(
-              'الحضور والغياب',
-              Icons.fact_check,
-              'سيتم تطوير سجل الحضور هنا',
-            ),
-            simplePage(
-              'الواجبات المدرسية',
-              Icons.menu_book,
-              'سيتم تطوير إدارة الواجبات هنا',
-            ),
-          ],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: selected,
-          onDestinationSelected: (index) {
-            setState(() => selected = index);
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home),
-              label: 'الرئيسية',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.people_outline),
-              selectedIcon: Icon(Icons.people),
-              label: 'الطلاب',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.star_outline),
-              selectedIcon: Icon(Icons.star),
-              label: 'الدرجات',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.check_circle_outline),
-              selectedIcon: Icon(Icons.check_circle),
-              label: 'الحضور',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.book_outlined),
-              selectedIcon: Icon(Icons.book),
-              label: 'الواجبات',
-            ),
-          ],
-        ),
-      ),
-    );
+  void studentDetails(Student s) {
+    showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Text(s.name, style: Theme.of(ctx).textTheme.headlineSmall),
+      const SizedBox(height: 12),
+      Text('الرقم: ${s.id}'), Text('الصف: ${s.grade} - الفصل: ${s.section}'),
+      Text('ولي الأمر: ${s.parent.isEmpty ? "غير محدد" : s.parent}'),
+      Text('الهاتف: ${s.phone.isEmpty ? "غير محدد" : s.phone}'),
+      const SizedBox(height: 14),
+      FilledButton.icon(onPressed: () { Navigator.pop(ctx); editStudent(s); }, icon: const Icon(Icons.edit), label: const Text('تعديل')),
+      OutlinedButton.icon(onPressed: () async {
+        Navigator.pop(ctx);
+        final yes = await showDialog<bool>(context: context, builder: (d) => AlertDialog(title: const Text('حذف الطالب؟'), content: Text('سيتم حذف ${s.name} ودرجاته وحضوره التجريبي.'), actions: [TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('إلغاء')), TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('حذف'))]));
+        if (yes == true) setState(() { students.remove(s); scores.remove(s.id); for (final day in attendance.values) { day.remove(s.id); } });
+      }, icon: const Icon(Icons.delete_outline), label: const Text('حذف')),
+    ]))));
   }
 
-  // لوحة التحكم
+  Widget heading(String title, {Widget? action}) => Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [Expanded(child: Text(title, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold))), if (action != null) action]));
+  Widget stat(String label, String value, IconData icon) => Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(children: [Icon(icon, size: 30, color: const Color(0xff2563eb)), const SizedBox(height: 8), Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)), Text(label)])));
   Widget dashboard() {
-    final sections = SchoolData.students
-        .map((s) => '${s.grade}-${s.section}')
-        .toSet()
-        .length;
+    final sections = students.map((s) => '${s.grade}-${s.section}').toSet().length;
+    final present = attendance[today]?.values.where((x) => x == 'حاضر').length ?? 0;
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      Text('مرحباً، $teacher', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+      Text('$school • $subject', style: const TextStyle(color: Colors.grey)),
+      const SizedBox(height: 18),
+      Row(children: [Expanded(child: stat('الطلاب', '${students.length}', Icons.people)), Expanded(child: stat('الفصول', '$sections', Icons.class_outlined))]),
+      Row(children: [Expanded(child: stat('حاضر اليوم', '$present', Icons.check_circle_outline)), Expanded(child: stat('الواجبات', '${homeworks.length}', Icons.assignment_outlined))]),
+      const SizedBox(height: 22), heading('الوصول السريع'),
+      Card(child: Column(children: [
+        ListTile(leading: const Icon(Icons.person_add), title: const Text('إضافة طالب'), onTap: () => editStudent()),
+        const Divider(height: 1),
+        ListTile(leading: const Icon(Icons.grade), title: const Text('إدخال الدرجات'), onTap: () => setState(() => tab = 2)),
+        const Divider(height: 1),
+        ListTile(leading: const Icon(Icons.fact_check), title: const Text('تسجيل الحضور'), onTap: () => setState(() => tab = 3)),
+        const Divider(height: 1),
+        ListTile(leading: const Icon(Icons.campaign), title: const Text('الإعلانات'), onTap: () => setState(() => tab = 5)),
+      ])),
+      const SizedBox(height: 16),
+      heading('آخر الإعلانات'),
+      if (announcements.isEmpty) const Text('لا توجد إعلانات بعد') else ...announcements.reversed.take(3).map((x) => Card(child: ListTile(leading: const Icon(Icons.campaign), title: Text(x)))),
+    ]);
+  }
 
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        Text(
-          'مرحباً بك - ${widget.role}',
-          style: const TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+  Widget studentPage() {
+    final visible = students.where((s) => (filter == 'الكل' || s.grade == filter) && (s.name.contains(search) || s.id.toString().contains(search))).toList();
+    return Column(children: [
+      Padding(padding: const EdgeInsets.all(14), child: Column(children: [
+        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => editStudent(), icon: const Icon(Icons.add), label: const Text('إضافة طالب'))),
+        const SizedBox(height: 12),
+        TextField(decoration: field('بحث بالاسم أو الرقم').copyWith(prefixIcon: const Icon(Icons.search)), onChanged: (v) => setState(() => search = v)),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(value: filter, decoration: field('تصفية حسب الصف'), items: ['الكل', ...grades].map((x) => DropdownMenuItem(value: x, child: Text(x == 'الكل' ? 'جميع الصفوف' : 'الصف $x'))).toList(), onChanged: (v) => setState(() => filter = v ?? 'الكل')),
+      ])),
+      Expanded(child: visible.isEmpty ? const Center(child: Text('لا يوجد طلاب مطابقون')) : ListView.builder(itemCount: visible.length, itemBuilder: (_, i) {
+        final s = visible[i];
+        return Card(margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 5), child: ListTile(leading: const CircleAvatar(child: Icon(Icons.person)), title: Text(s.name), subtitle: Text('الصف ${s.grade} • الفصل ${s.section} • ${s.id}'), trailing: const Icon(Icons.chevron_left), onTap: () => studentDetails(s)));
+      })),
+    ]);
+  }
+
+  Future<void> editWeights() async {
+    final controllers = {for (final k in weights.keys) k: TextEditingController(text: weights[k].toString())};
+    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('توزيع الدرجة من 100'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: controllers.entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 8), child: TextField(controller: e.value, keyboardType: TextInputType.number, decoration: field(e.key)))).toList()),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
+        final values = controllers.map((k,v) => MapEntry(k, int.tryParse(v.text) ?? -1));
+        if (values.values.any((x) => x < 0) || values.values.reduce((a,b) => a+b) != 100) { message('يجب أن يكون مجموع التوزيع 100'); return; }
+        setState(() => weights.addAll(values)); Navigator.pop(ctx);
+      }, child: const Text('حفظ'))],
+    ));
+    for (final c in controllers.values) { c.dispose(); }
+  }
+
+  Future<void> editScore(Student s) async {
+    final old = scores[s.id] ?? {};
+    final controllers = {for (final k in weights.keys) k: TextEditingController(text: (old[k] ?? 0).toString())};
+    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+      title: Text('درجات ${s.name}'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: controllers.entries.map((e) => Padding(padding: const EdgeInsets.only(bottom: 10), child: TextField(controller: e.value, keyboardType: TextInputType.number, decoration: field('${e.key} / ${weights[e.key]}')))).toList())),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
+        final values = controllers.map((k,v) => MapEntry(k, int.tryParse(v.text) ?? -1));
+        if (values.entries.any((e) => e.value < 0 || e.value > weights[e.key]!)) { message('تأكد من أن كل درجة ضمن الحد المسموح'); return; }
+        setState(() => scores[s.id] = values); Navigator.pop(ctx);
+      }, child: const Text('حفظ'))],
+    ));
+    for (final c in controllers.values) { c.dispose(); }
+  }
+
+  Widget gradePage() => ListView(padding: const EdgeInsets.all(14), children: [
+    heading('توزيع الدرجات', action: TextButton.icon(onPressed: editWeights, icon: const Icon(Icons.tune), label: const Text('تعديل'))),
+    Card(child: Padding(padding: const EdgeInsets.all(14), child: Wrap(spacing: 14, runSpacing: 8, children: weights.entries.map((e) => Chip(label: Text('${e.key}: ${e.value}'))).toList()))),
+    const SizedBox(height: 16), heading('درجات الطلاب'),
+    if (students.isEmpty) const Text('أضف الطلاب أولاً'),
+    ...students.map((s) {
+      final total = scores[s.id]?.values.fold<int>(0, (a,b) => a+b);
+      return Card(child: ListTile(leading: const Icon(Icons.grade_outlined), title: Text(s.name), subtitle: Text('الصف ${s.grade} • ${total == null ? "لم يتم التقييم" : "$total / 100"}'), trailing: const Icon(Icons.edit_outlined), onTap: () => editScore(s)));
+    }),
+    const Text('الدرجات تجريبية، ويمكن تعديل توزيعها لكل مادة لاحقاً.', style: TextStyle(color: Colors.grey)),
+  ]);
+
+  Widget attendancePage() {
+    final day = attendance.putIfAbsent(today, () => {});
+    return ListView(padding: const EdgeInsets.all(14), children: [
+      heading('الحضور اليومي'),
+      Card(child: ListTile(leading: const Icon(Icons.calendar_today), title: Text('التاريخ: $today'), subtitle: const Text('اختر حالة كل طالب'))),
+      const SizedBox(height: 12),
+      if (students.isEmpty) const Text('أضف الطلاب أولاً'),
+      ...students.map((s) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(s.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        const Text(
-          'لوحة متابعة العملية التعليمية',
-          style: TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 25),
-        Row(
-          children: [
-            Expanded(
-              child: statCard(
-                'الطلاب',
-                '${SchoolData.students.length}',
-                Icons.people,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: statCard(
-                'الفصول',
-                '$sections',
-                Icons.class_,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: statCard(
-                'الواجبات',
-                '0',
-                Icons.assignment,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: statCard(
-                'التنبيهات',
-                '0',
-                Icons.notifications,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 28),
-        const Text(
-          'الوصول السريع',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: [
-              quickAction(
-                'إدارة الطلاب',
-                Icons.people,
-                1,
-              ),
-              const Divider(height: 1),
-              quickAction(
-                'إدارة الدرجات',
-                Icons.grade,
-                2,
-              ),
-              const Divider(height: 1),
-              quickAction(
-                'تسجيل الحضور',
-                Icons.fact_check,
-                3,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+        Wrap(spacing: 6, children: ['حاضر','غائب','متأخر'].map((status) => ChoiceChip(label: Text(status), selected: day[s.id] == status, onSelected: (_) => setState(() => day[s.id] = status))).toList()),
+      ])))),
+      const SizedBox(height: 10),
+      Text('تم تسجيل ${day.length} من ${students.length} طلاب'),
+    ]);
   }
 
-  Widget statCard(
-    String title,
-    String value,
-    IconData icon,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 34,
-              color: const Color(0xFF2563EB),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(title),
-          ],
-        ),
-      ),
-    );
+  Future<void> addHomework() async {
+    final title = TextEditingController();
+    final desc = TextEditingController();
+    final due = TextEditingController(text: today);
+    String grade = grades.first;
+    await showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, change) => AlertDialog(
+      title: const Text('واجب جديد'),
+      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: title, decoration: field('عنوان الواجب')),
+        const SizedBox(height: 10), TextField(controller: desc, maxLines: 3, decoration: field('تفاصيل الواجب')),
+        const SizedBox(height: 10), DropdownButtonFormField<String>(value: grade, decoration: field('الصف'), items: grades.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), onChanged: (v) => change(() => grade = v ?? grade)),
+        const SizedBox(height: 10), TextField(controller: due, readOnly: true, decoration: field('موعد التسليم').copyWith(suffixIcon: const Icon(Icons.calendar_today)), onTap: () async {
+          final d = await showDatePicker(context: ctx, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2100));
+          if (d != null) change(() => due.text = d.toIso8601String().substring(0,10));
+        }),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
+        if (title.text.trim().isEmpty) { message('أدخل عنوان الواجب'); return; }
+        setState(() => homeworks.add(Homework(title.text.trim(), desc.text.trim(), grade, due.text)));
+        Navigator.pop(ctx);
+      }, child: const Text('إضافة'))],
+    )));
+    title.dispose(); desc.dispose(); due.dispose();
   }
 
-  Widget quickAction(
-    String title,
-    IconData icon,
-    int index,
-  ) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_left),
-      onTap: () {
-        setState(() => selected = index);
-      },
-    );
+  Widget homeworkPage() => ListView(padding: const EdgeInsets.all(14), children: [
+    heading('الواجبات', action: FilledButton.icon(onPressed: addHomework, icon: const Icon(Icons.add), label: const Text('جديد'))),
+    if (homeworks.isEmpty) const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('لا توجد واجبات بعد'))),
+    ...homeworks.reversed.map((h) => Card(child: ListTile(leading: const Icon(Icons.assignment_outlined), title: Text(h.title), subtitle: Text('الصف ${h.grade} • التسليم ${h.due}\n${h.description}'), isThreeLine: h.description.isNotEmpty, trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => homeworks.remove(h)))))),
+  ]);
+
+  Future<void> addAnnouncement() async {
+    final textController = TextEditingController();
+    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('إعلان جديد'), content: TextField(controller: textController, maxLines: 3, decoration: field('نص الإعلان')),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () {
+        if (textController.text.trim().isEmpty) return;
+        setState(() => announcements.add(textController.text.trim())); Navigator.pop(ctx);
+      }, child: const Text('نشر تجريبي'))],
+    ));
+    textController.dispose();
   }
 
-  // صفحة الطلاب
-  Widget studentsPage() {
-    final filtered = SchoolData.students.where((student) {
-      final matchSearch =
-          student.name.toLowerCase().contains(
-                search.toLowerCase(),
-              ) ||
-          student.id.contains(search);
-
-      final matchGrade =
-          selectedGrade == 'الكل' ||
-          student.grade == selectedGrade;
-
-      return matchSearch && matchGrade;
-    }).toList();
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('إضافة طالب جديد'),
-                  onPressed: () => studentForm(),
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                onChanged: (value) {
-                  setState(() => search = value);
-                },
-                decoration: const InputDecoration(
-                  hintText: 'ابحث باسم الطالب أو رقمه',
-                  prefixIcon: Icon(Icons.search),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                key: ValueKey(selectedGrade),
-                initialValue: selectedGrade,
-                decoration: const InputDecoration(
-                  labelText: 'تصفية حسب الصف',
-                ),
-                items: ['الكل', ...grades].map((grade) {
-                  return DropdownMenuItem(
-                    value: grade,
-                    child: Text(
-                      grade == 'الكل'
-                          ? 'جميع الصفوف'
-                          : 'الصف $grade',
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => selectedGrade = value);
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-              ? const Center(
-                  child: Text('لا توجد نتائج مطابقة'),
-                )
-              : ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final student = filtered[index];
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 5,
-                      ),
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.person),
-                        ),
-                        title: Text(student.name),
-                        subtitle: Text(
-                          'الصف ${student.grade} - '
-                          'الفصل ${student.section}',
-                        ),
-                        trailing:
-                            const Icon(Icons.chevron_left),
-                        onTap: () => studentProfile(student),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
+  Future<void> editTeacher() async {
+    final name = TextEditingController(text: teacher);
+    final schoolName = TextEditingController(text: school);
+    final subjectName = TextEditingController(text: subject);
+    await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+      title: const Text('بيانات المعلم'),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [TextField(controller: name, decoration: field('اسم المعلم')), const SizedBox(height: 10), TextField(controller: schoolName, decoration: field('المدرسة')), const SizedBox(height: 10), TextField(controller: subjectName, decoration: field('المادة'))]),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')), FilledButton(onPressed: () { setState(() { teacher = name.text.trim(); school = schoolName.text.trim(); subject = subjectName.text.trim(); }); Navigator.pop(ctx); }, child: const Text('حفظ'))],
+    ));
+    name.dispose(); schoolName.dispose(); subjectName.dispose();
   }
 
-  // نموذج إضافة وتعديل الطالب
-  void studentForm({Student? student}) {
-    final editing = student != null;
+  Widget morePage() => ListView(padding: const EdgeInsets.all(14), children: [
+    heading('المعلم والإعدادات'),
+    Card(child: ListTile(leading: const Icon(Icons.account_circle_outlined), title: Text(teacher), subtitle: Text('$school • $subject'), trailing: const Icon(Icons.edit), onTap: editTeacher)),
+    const SizedBox(height: 16), heading('الإعلانات'),
+    SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: addAnnouncement, icon: const Icon(Icons.campaign), label: const Text('إضافة إعلان'))),
+    ...announcements.reversed.map((a) => Card(child: ListTile(title: Text(a), trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => setState(() => announcements.remove(a)))))),
+    const SizedBox(height: 16),
+    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('نسخة تجريبية: البيانات محفوظة في الذاكرة فقط وتُفقد بعد إغلاق التطبيق. لا توجد مصادقة أو إرسال إشعارات حقيقية.'))),
+  ]);
 
-    final idController = TextEditingController(
-      text: student?.id ?? '',
-    );
-    final nameController = TextEditingController(
-      text: student?.name ?? '',
-    );
-    final parentController = TextEditingController(
-      text: student?.parentName ?? '',
-    );
-    final phoneController = TextEditingController(
-      text: student?.parentPhone ?? '',
-    );
-
-    String grade = student?.grade ?? 'الأول';
-    String section = student?.section ?? 'أ';
-    final formKey = GlobalKey<FormState>();
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: AlertDialog(
-                title: Text(
-                  editing
-                      ? 'تعديل بيانات الطالب'
-                      : 'إضافة طالب جديد',
-                ),
-                content: SizedBox(
-                  width: double.maxFinite,
-                  child: SingleChildScrollView(
-                    child: Form(
-                      key: formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextFormField(
-                            controller: idController,
-                            enabled: !editing,
-                            decoration: const InputDecoration(
-                              labelText: 'الرقم المدرسي',
-                              prefixIcon: Icon(Icons.badge),
-                            ),
-                            validator: (value) {
-                              final id = value?.trim() ?? '';
-                              if (id.isEmpty) {
-                                return 'أدخل الرقم المدرسي';
-                              }
-                              if (!editing &&
-                                  SchoolData.students.any(
-                                    (s) => s.id == id,
-                                  )) {
-                                return 'الرقم مستخدم مسبقاً';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'اسم الطالب الكامل',
-                              prefixIcon: Icon(Icons.person),
-                            ),
-                            validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
-                                return 'أدخل اسم الطالب';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            key: ValueKey('grade-$grade'),
-                            initialValue: grade,
-                            decoration: const InputDecoration(
-                              labelText: 'الصف الدراسي',
-                            ),
-                            items: grades.map((g) {
-                              return DropdownMenuItem(
-                                value: g,
-                                child: Text('الصف $g'),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setDialogState(() {
-                                  grade = value;
-                                });
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            key: ValueKey('section-$section'),
-                            initialValue: section,
-                            decoration: const InputDecoration(
-                              labelText: 'الفصل',
-                            ),
-                            items: ['أ', 'ب', 'ج', 'د'].map((s) {
-                              return DropdownMenuItem(
-                                value: s,
-                                child: Text(s),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setDialogState(() {
-                                  section = value;
-                                });
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: parentController,
-                            decoration: const InputDecoration(
-                              labelText: 'اسم ولي الأمر',
-                              prefixIcon:
-                                  Icon(Icons.family_restroom),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: phoneController,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                              labelText: 'هاتف ولي الأمر',
-                              prefixIcon: Icon(Icons.phone),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(dialogContext);
-                    },
-                    child: const Text('إلغاء'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      if (!formKey.currentState!.validate()) {
-                        return;
-                      }
-
-                      setState(() {
-                        if (editing) {
-                          student.name =
-                              nameController.text.trim();
-                          student.grade = grade;
-                          student.section = section;
-                          student.parentName =
-                              parentController.text.trim();
-                          student.parentPhone =
-                              phoneController.text.trim();
-                        } else {
-                          SchoolData.students.add(
-                            Student(
-                              id: idController.text.trim(),
-                              name: nameController.text.trim(),
-                              grade: grade,
-                              section: section,
-                              parentName:
-                                  parentController.text.trim(),
-                              parentPhone:
-                                  phoneController.text.trim(),
-                            ),
-                          );
-                        }
-                      });
-
-                      Navigator.pop(dialogContext);
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            editing
-                                ? 'تم تعديل الطالب بنجاح'
-                                : 'تمت إضافة الطالب بنجاح',
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text('حفظ'),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // ملف الطالب
-  void studentProfile(Student student) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (pageContext) {
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(
-              appBar: AppBar(
-                title: const Text('ملف الطالب'),
-              ),
-              body: ListView(
-                padding: const EdgeInsets.all(18),
-                children: [
-                  const CircleAvatar(
-                    radius: 40,
-                    child: Icon(Icons.person, size: 45),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    student.name,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  infoTile(
-                    'الرقم المدرسي',
-                    student.id,
-                  ),
-                  infoTile(
-                    'الصف الدراسي',
-                    student.grade,
-                  ),
-                  infoTile(
-                    'الفصل',
-                    student.section,
-                  ),
-                  infoTile(
-                    'ولي الأمر',
-                    student.parentName,
-                  ),
-                  infoTile(
-                    'رقم الهاتف',
-                    student.parentPhone,
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.edit),
-                    label: const Text('تعديل البيانات'),
-                    onPressed: () {
-                      Navigator.pop(pageContext);
-                      studentForm(student: student);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.delete),
-                    label: const Text('حذف الطالب'),
-                    onPressed: () {
-                      confirmDelete(student, pageContext);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget infoTile(String label, String value) {
-    return Card(
-      child: ListTile(
-        title: Text(label),
-        subtitle: Text(
-          value.isEmpty ? 'غير محدد' : value,
-        ),
-      ),
-    );
-  }
-
-  // تأكيد الحذف
-  void confirmDelete(
-    Student student,
-    BuildContext profileContext,
-  ) {
-    showDialog<void>(
-      context: profileContext,
-      builder: (dialogContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            title: const Text('تأكيد الحذف'),
-            content: Text(
-              'هل تريد حذف الطالب ${student.name}؟',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  setState(() {
-                    SchoolData.students.remove(student);
-                  });
-                  Navigator.pop(dialogContext);
-                  Navigator.pop(profileContext);
-                },
-                child: const Text('حذف'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // الصفحات التي سنطورها لاحقاً
-  Widget simplePage(
-    String title,
-    IconData icon,
-    String description,
-  ) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 75,
-              color: const Color(0xFF2563EB),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 25,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  @override
+  Widget build(BuildContext context) => Directionality(textDirection: TextDirection.rtl, child: Scaffold(
+    appBar: AppBar(title: Text(tabs[tab]), backgroundColor: const Color(0xff2563eb), foregroundColor: Colors.white),
+    body: IndexedStack(index: tab, children: [dashboard(), studentPage(), gradePage(), attendancePage(), homeworkPage(), morePage()]),
+    bottomNavigationBar: NavigationBar(height: 72, selectedIndex: tab, labelBehavior: NavigationDestinationLabelBehavior.alwaysShow, onDestinationSelected: (v) => setState(() => tab = v), destinations: List.generate(tabs.length, (i) => NavigationDestination(icon: Icon(icons[i]), label: tabs[i]))),
+  ));
 }
