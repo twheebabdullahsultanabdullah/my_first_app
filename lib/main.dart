@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 void main() => runApp(const SchoolApp());
@@ -377,31 +376,142 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void addStudent() {
-    final nameController = TextEditingController();
-    final gradeController = TextEditingController();
+  
+void addStudent() {
+  final nameController = TextEditingController();
+  final parentController = TextEditingController();
+  final phoneController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('إضافة طالب جديد'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'اسم الطالب',
+  String selectedGrade = 'الأول';
+  String selectedSection = 'أ';
+
+  final grades = [
+    'الأول', 'الثاني', 'الثالث',
+    'الرابع', 'الخامس', 'السادس',
+    'السابع', 'الثامن', 'التاسع',
+  ];
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: const Text('إضافة طالب جديد'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'اسم الطالب',
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedGrade,
+                        decoration: const InputDecoration(
+                          labelText: 'الصف الدراسي',
+                        ),
+                        items: grades.map((grade) {
+                          return DropdownMenuItem(
+                            value: grade,
+                            child: Text(grade),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              selectedGrade = value;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedSection,
+                        decoration: const InputDecoration(
+                          labelText: 'الفصل',
+                        ),
+                        items: ['أ', 'ب', 'ج', 'د'].map((s) {
+                          return DropdownMenuItem(
+                            value: s,
+                            child: Text(s),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              selectedSection = value;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: parentController,
+                        decoration: const InputDecoration(
+                          labelText: 'اسم ولي الأمر',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'هاتف ولي الأمر',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('إلغاء'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(this.context)
+                          .showSnackBar(
+                        const SnackBar(
+                          content: Text('أدخل اسم الطالب'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    setState(() {
+                      SchoolData.students.add(
+                        Student(
+                          name,
+                          'الصف $selectedGrade - $selectedSection',
+                        ),
+                      );
+                    });
+
+                    Navigator.pop(context);
+                  },
+                  child: const Text('حفظ الطالب'),
+                ),
+              ],
             ),
-            TextField(
-              controller: gradeController,
-              decoration: const InputDecoration(
-                labelText: 'الصف الدراسي',
-              ),
-            ),
-          ],
-        ),
+          );
+        },
+      );
+    },
+  );
+}
+
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
